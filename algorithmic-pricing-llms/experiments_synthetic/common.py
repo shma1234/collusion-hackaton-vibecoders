@@ -10,7 +10,8 @@ project 1.1 recipe:
      benchmark - the end-of-run summary prints PASS/FAIL for that.
   2. Vary exactly one feature while holding the economics fixed:
        --memory 0|10|100      visible rounds of history in the prompt
-       --no-notes             persistent PLANS/INSIGHTS scratchpad off
+       --history-order newest|oldest   order of those rounds in the prompt
+       --no-notes            persistent PLANS/INSIGHTS scratchpad off
        --shuffle-names        competitor labels re-shuffled every round
        --temperature 0.7      sampling temperature
   3. Expand --seeds only after the positive control works.
@@ -64,6 +65,7 @@ async def run_setting(
     rounds: int = 300,
     seed: Optional[int] = 0,
     memory_length: int = 100,
+    history_order: str = "newest",
     notes: bool = True,
     shuffle_names: bool = False,
     temperature: float = 0.7,
@@ -87,6 +89,7 @@ async def run_setting(
             provider=provider,
             response_model=response_model,
             memory_length=memory_length,
+            history_order=history_order,
             temperature=temperature,
             seed=seed,
             prompt_template=template,
@@ -98,6 +101,8 @@ async def run_setting(
     label = {1: "monopoly", 2: "duopoly"}.get(n_firms, f"oligopoly_{n_firms}_firms")
     if experiment_name is None:
         tags = [label, "setting", prompt, f"mem{memory_length}"]
+        if history_order != "newest":
+            tags.append(f"hist{history_order}")
         if not notes:
             tags.append("nonotes")
         if shuffle_names:
@@ -153,6 +158,12 @@ def make_parser(n_firms_default: int, description: str) -> argparse.ArgumentPars
         type=int,
         default=100,
         help="visible rounds of history in the prompt (try 0, 10, 100)",
+    )
+    a.add_argument(
+        "--history-order",
+        default="newest",
+        choices=["newest", "oldest"],
+        help="order of the visible past rounds in the prompt (thesis: newest first)",
     )
     a.add_argument(
         "--no-notes", action="store_true", help="remove the persistent PLANS/INSIGHTS scratchpad"
@@ -221,6 +232,8 @@ def _run_all(args: argparse.Namespace) -> None:
         for alpha in args.alphas:
             for prompt in args.prompts:
                 flags = [f"mem={args.memory}"]
+                if args.history_order != "newest":
+                    flags.append(f"history={args.history_order}-first")
                 if args.no_notes:
                     flags.append("notes=off")
                 if args.shuffle_names:
@@ -239,6 +252,7 @@ def _run_all(args: argparse.Namespace) -> None:
                         rounds=args.rounds,
                         seed=seed,
                         memory_length=args.memory,
+                        history_order=args.history_order,
                         notes=not args.no_notes,
                         shuffle_names=args.shuffle_names,
                         temperature=args.temperature,

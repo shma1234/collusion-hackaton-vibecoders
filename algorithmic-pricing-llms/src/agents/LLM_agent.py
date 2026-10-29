@@ -38,6 +38,7 @@ class LLMAgent(Agent):
             forwarded to ``make_provider`` when ``provider`` is None
         prompt_template: Template for prompt formatting
         memory_length: Number of past rounds shown in the prompt (0 = none)
+        history_order: order of those rounds in the prompt, "newest" (thesis) or "oldest" first
         temperature: sampling temperature (thesis: 0.7)
         seed: sampling seed, forwarded when the provider supports it
         env_params: Market environment parameters
@@ -54,6 +55,7 @@ class LLMAgent(Agent):
         model_name: Optional[str] = None,
         prompt_template=None,
         memory_length: int = 100,
+        history_order: str = "newest",
         temperature: float = 0.7,
         seed: Optional[int] = None,
         env_params: dict = None,
@@ -74,6 +76,9 @@ class LLMAgent(Agent):
         self.reponse_model_in_answer = self.__filter_in_answer_fields(response_model)
         self.prompt_template = prompt_template
         self.memory_length = memory_length
+        if history_order not in ("newest", "oldest"):
+            raise ValueError(f"history_order must be 'newest' or 'oldest', got {history_order!r}")
+        self.history_order = history_order
         self.logger = logger or logging.getLogger("experiment_logger")
         self.reponse_model_str = (
             "Respond only with a JSON object with this schema:\n{\n"

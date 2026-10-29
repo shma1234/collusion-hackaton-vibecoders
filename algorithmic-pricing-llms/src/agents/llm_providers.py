@@ -143,8 +143,14 @@ class OpenAICompatibleProvider(Provider):
         # default). The opt-in presets (openai / google / mistral-compat / ollama / openai-compatible)
         # name a DIFFERENT endpoint, so honor their resolved base_url/key instead of silently rerouting
         # everything to the shared endpoint (which also makes is_remote above load-bearing again).
+        # Optional OpenRouter provider pin, e.g. OPENROUTER_PROVIDER=Mistral (comma-separated for an
+        # ordered list). Fallbacks are switched off so a run never silently lands on another host.
+        self.routing = None
         if preset == "openrouter":
             self._client = make_client(async_=True)
+            pinned = [p.strip() for p in os.getenv("OPENROUTER_PROVIDER", "").split(",") if p.strip()]
+            if pinned and endpoint_kind() == "openrouter":
+                self.routing = {"order": pinned, "allow_fallbacks": False}
         else:
             from openai import AsyncOpenAI
 
@@ -157,6 +163,8 @@ class OpenAICompatibleProvider(Provider):
             kwargs["seed"] = seed
         if self._json_mode:
             kwargs["response_format"] = {"type": "json_object"}
+        if self.routing:
+            kwargs["extra_body"] = {"provider": self.routing}
         from openai import AuthenticationError, BadRequestError, NotFoundError, PermissionDeniedError
 
         fatal = (NotFoundError, AuthenticationError, PermissionDeniedError)

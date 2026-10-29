@@ -279,6 +279,9 @@ class Experiment:
             "agents_memory_length": {
                 agent.name: agent.memory_length for agent in self.agents
             },
+            "agents_history_order": {
+                agent.name: getattr(agent, "history_order", None) for agent in self.agents
+            },
             "agents_models": {agent.name: agent.model_name for agent in self.agents},
             "agent_environment_mapping": {
                 agent.name: {
@@ -297,6 +300,10 @@ class Experiment:
             },
             "agents_providers": {
                 agent.name: getattr(getattr(agent, "provider", None), "name", None)
+                for agent in self.agents
+            },
+            "agents_provider_routing": {
+                agent.name: getattr(getattr(agent, "provider", None), "routing", None)
                 for agent in self.agents
             },
             "rate_limit_seconds": self.rate_limit_seconds,

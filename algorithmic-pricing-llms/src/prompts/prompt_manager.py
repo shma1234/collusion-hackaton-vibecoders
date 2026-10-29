@@ -48,7 +48,10 @@ class PromptManager:
         memory_fields = self._get_fields_to_remember(agent.response_model)
 
         past_data = self._get_memory_field_data(
-            history, memory_fields, agent.memory_length
+            history,
+            memory_fields,
+            agent.memory_length,
+            getattr(agent, "history_order", "newest"),
         )
         prompt_data = self._build_prompt_data(
             agent, history, prompt_fields, past_data, round_num
@@ -68,7 +71,11 @@ class PromptManager:
         ]
 
     def _get_memory_field_data(
-        self, history: dict, memory_fields: List[str], memory_length: int
+        self,
+        history: dict,
+        memory_fields: List[str],
+        memory_length: int,
+        history_order: str = "newest",
     ) -> dict:
         memory_data = {}
         for field in memory_fields:
@@ -80,10 +87,11 @@ class PromptManager:
                 ]
                 # NB: python's list[-0:] is the whole list, so handle 0 explicitly
                 memory_val = memory_val[-memory_length:] if memory_length > 0 else []
+                # memory_val is oldest-first; the thesis prompt shows newest first
+                ordered = memory_val if history_order == "oldest" else reversed(memory_val)
 
                 memory_data[field] = "\n".join(
-                    f"Round {round_num}\n{value}"
-                    for round_num, value in reversed(memory_val)
+                    f"Round {round_num}\n{value}" for round_num, value in ordered
                 )
             except KeyError as e:
                 self.logger.error(f"Field '{field}' not found in history. {e}")
